@@ -1,0 +1,29 @@
+[package]
+name = "httpr"
+version = "0.1.0"
+edition = "2024"
+
+authors = [ "Martin Maartensson <martinmaartensson@gmail.com>" ]
+description = "A lightweight HTTP router for Hyper"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/maartensson/httpr"
+homepage = "https://github.com/maartensson/httpr"
+docs = "https://docs.rs/httpr"
+readme = "README.md"
+keywords = ["http", "hyper", "router", "web"]
+categories = ["web-programming"]
+
+[dependencies]
+# Runtime
+smol = "2.0.2"
+smol-hyper = "0.1.1"
+
+# HTTP
+hyper = { version = "1.0", default-features = false, features = [ "http1", "server", "client"] }
+http-body-util = "0.1"
+
+# TLS
+hyper-rustls = "0.27.9"
+rustls = "0.23.40"
+webpki-roots = "1.0.7"
+futures-rustls = "0.26.0"
