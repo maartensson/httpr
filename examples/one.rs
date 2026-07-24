@@ -1,6 +1,4 @@
-use http_body_util::Full;
-use httpr::{Router, listen_and_serve};
-use hyper::{Method, Response, body::Bytes};
+use httpr::{Data, Method, Router, listen_and_serve};
 use std::{
     net::TcpListener,
     sync::{Arc, atomic::AtomicI64},
@@ -19,7 +17,7 @@ fn main() {
 
     let router = Router::new().add(Method::GET, "/", |ctx: &Arc<App>, _, _| {
         let count = ctx.count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-        Response::new(Full::new(Bytes::from(format!("Count: {}", count))))
+        Data::String(format!("Count: {}", count)).into()
     });
 
     listen_and_serve(ln, Arc::new(app), router);
