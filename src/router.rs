@@ -1,8 +1,7 @@
-use http_body_util::Full;
-use hyper::{
-    Method, Request, Response, StatusCode,
-    body::{Bytes, Incoming},
-};
+use bytes::Bytes;
+use http::{Method, Request, Response};
+
+use crate::response;
 
 pub type Param<'a> = (&'a str, &'a str);
 
@@ -14,29 +13,30 @@ impl<'a> Params<'a> {
     pub fn new(inner: Vec<Param<'a>>) -> Self {
         Self { inner }
     }
+
     pub fn get(&self, key: &str) -> Option<&'a str> {
         self.inner.iter().find(|(k, _)| *k == key).map(|(_, v)| *v)
     }
 }
 
-type Handler<C> = for<'a> fn(&C, &Request<Incoming>, Params<'a>) -> Response<Full<Bytes>>;
+type Handler<C, B> = for<'a> fn(&C, &Request<B>, Params<'a>) -> Response<Bytes>;
 
-struct Route<C> {
+struct Route<C, B> {
     method: Method,
     pattern: &'static str,
-    handler: Handler<C>,
+    handler: Handler<C, B>,
 }
 
-pub struct Router<C> {
-    routes: Vec<Route<C>>,
+pub struct Router<C, B = Bytes> {
+    routes: Vec<Route<C, B>>,
 }
 
-impl<C> Router<C> {
+impl<C, B> Router<C, B> {
     pub fn new() -> Self {
         Self { routes: vec![] }
     }
 
-    pub fn add(mut self, method: Method, pattern: &'static str, handler: Handler<C>) -> Self {
+    pub fn add(mut self, method: Method, pattern: &'static str, handler: Handler<C, B>) -> Self {
         self.routes.push(Route {
             method,
             pattern,
@@ -45,31 +45,33 @@ impl<C> Router<C> {
         self
     }
 
-    pub fn handle(&self, ctx: &C, req: Request<Incoming>) -> Response<Full<Bytes>> {
+    pub fn handle(&self, ctx: &C, req: Request<B>) -> Response<Bytes> {
         let path = req.uri().path();
         let method = req.method();
 
-        // Handle HEAD for all GET routes
-        let effective_method = match method {
-            &Method::HEAD => &Method::GET,
-            m => m,
+        let effective_method = if method == Method::HEAD {
+            &Method::GET
+        } else {
+            method
         };
 
-        for r in &self.routes {
-            if &r.method == effective_method {
-                if let Some(params) = match_route(r.pattern, path) {
-                    let mut response = (r.handler)(&ctx, &req, params);
+        for route in &self.routes {
+            if &route.method != effective_method {
+                continue;
+            }
 
-                    // Strip body if HEAD
-                    if method == &Method::HEAD {
-                        *response.body_mut() = Full::new(Bytes::new())
-                    }
+            if let Some(params) = match_route(route.pattern, path) {
+                let mut response = (route.handler)(ctx, &req, params);
 
-                    return response;
+                if method == Method::HEAD {
+                    *response.body_mut() = Bytes::new();
                 }
+
+                return response;
             }
         }
-        not_found()
+
+        response::not_found()
     }
 }
 
@@ -94,11 +96,4 @@ fn match_route<'a>(pattern: &'static str, path: &'a str) -> Option<Params<'a>> {
             _ => return None,
         }
     }
-}
-
-fn not_found() -> Response<Full<Bytes>> {
-    Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .body(Full::new(Bytes::from("not found")))
-        .unwrap()
 }

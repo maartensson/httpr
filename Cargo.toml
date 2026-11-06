@@ -14,16 +14,20 @@ keywords = ["http", "hyper", "router", "web"]
 categories = ["web-programming"]
 
 [dependencies]
-# Runtime
-smol = "2.0.2"
-smol-hyper = "0.1.1"
+bytes = "1"
+http = "1"
 
-# HTTP
-hyper = { version = "1.0", default-features = false, features = [ "http1", "server", "client"] }
-http-body-util = "0.1"
+# http1
+httparse = "1"
 
-# TLS
-hyper-rustls = "0.27.9"
-rustls = "0.23.40"
-webpki-roots = "1.0.7"
-futures-rustls = "0.26.0"
+# event loop 
+mio = { version = "1", features = ["net", "os-poll"] }
+
+# Logging
+tracing = "0.1.44"
+tracing-subscriber = "0.3.23"
+
+# http3
+quiche = "0.30"
+rand = "0.9"
+boring = "5.4.0"
